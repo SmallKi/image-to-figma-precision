@@ -1,0 +1,16 @@
+# Publish only the reusable skill and repository documentation.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/image-to-figma-precision/
+
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
