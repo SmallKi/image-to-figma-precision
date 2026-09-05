@@ -28,11 +28,13 @@ description: 将截图或图片设计稿还原到 Figma，拆分独立组件、�
 
 优先沿用源像素或用户提供的原始素材；图像上传后在 Figma 用 IMAGE 填充、裁剪变换和矢量遮罩隔离对象。遮罩必须沿对象轮廓，不允许把邻近文字或别的组件一起带入。
 
+需要生成、重生或编辑透明素材时，优先使用当前内置生图工具直接请求真实 RGBA；先验证实际文件，再决定是否需要独立抠图。轻微半透明及正常柔边可以接受，例如主体 Alpha 253/255 不作为失败，也不为追求全 255 重复生成或强制硬化 Alpha。近不透明统计、孔洞、高光和换底检查见 [references/transparent-generation.md](references/transparent-generation.md)。
+
 图标前景必须具有真实透明背景，底板、投影、描边和通知徽章分别建层。矩形裁剪、圆角裁剪、与当前底板同色的底色、画在图片里的棋盘格都不等于抠图。按 [references/transparent-icons.md](references/transparent-icons.md) 的固定闭环检查 Alpha、细小孔隙和边缘杂色，并用 `scripts/render-cutout-proof.py` 生成白、黑、洋红、青色、Alpha 与半透明边缘证据图。未通过的素材不得写入最终图标层；保留问题记录，继续更换方法。
 
 出现旧底色、邻接物颜色或白/黑边时，先读 [references/edge-cleanup.md](references/edge-cleanup.md)：将可靠实体内区、背景/孔洞和混色边带分开，提示词明确只修受污染边带 RGB；透明生成不夹带“失败就用白底”的分支。Alpha 与边缘 RGB 分别验收，包括孔洞内沿和已被误判为不透明的残色边。已知纯色底可用独立 Alpha 反混色；颜色距离 Alpha 不作为默认答案。
 
-抠图须分别验证边缘平滑、原底色残留、高光保留和真实孔洞。对容易混淆的图标建立必须保留/必须透明区域，用 `scripts/audit-cutout.py` 回归检查；不能仅凭有 Alpha 判定合格。平滑边必须用 Figma 主组件原生 4× 导出检查半透明 Alpha 层级、Alpha 突跳、孤立半透明点、单像素尖刺和针孔；`alphaCoverage.minOpaqueFractionOfForeground` 还必须拒绝“背景透明但主体整体半透明”的伪合格图。像素画素材要在合同里显式声明边缘策略。用户允许重新生成时，按 [references/transparent-generation.md](references/transparent-generation.md) 先在生成阶段约束目标尺寸、颜色风格、轮廓风格、主体 Alpha 和孔洞；保留原素材与新候选，分别报告透明质量和原图保真度。重生后需要重新配准，不能改原验收坐标掩盖形状漂移。
+抠图须分别验证边缘平滑、原底色残留、高光保留和真实孔洞。对容易混淆的图标建立必须保留/必须透明区域，用 `scripts/audit-cutout.py` 回归检查；不能仅凭有 Alpha 判定合格。平滑边必须用 Figma 主组件原生 4× 导出检查半透明 Alpha 层级、Alpha 突跳、孤立半透明点、单像素尖刺和针孔；`alphaCoverage.minOpaqueFractionOfForeground` 还必须拒绝“背景透明但实体明显透底”的伪合格图；接近不透明的主体与正常抗锯齿不属于此类失败。像素画素材要在合同里显式声明边缘策略。用户允许重新生成时，按 [references/transparent-generation.md](references/transparent-generation.md) 先在生成阶段约束目标尺寸、颜色风格、轮廓风格、主体 Alpha 和孔洞；保留原素材与新候选，分别报告透明质量和原图保真度。重生后需要重新配准，不能改原验收坐标掩盖形状漂移。
 
 轮廓可能由主体、旗杆、手柄、火花等多个不相连区域组成。先建主体外轮廓，再用独立子路径覆盖每个确认属于对象的分离部分；内部孔洞使用反向子路径或显式排除区，不能用一个大矩形把周围背景一起带走。每次更新都导出“正常、移动、隐藏”三态：正常态查边缘变色，移动态查带走的背景块，隐藏态查原位置残留。发现残留后在原位置与无对象补全图之间做局部差分，只扩展命中的子路径，直到没有旗杆、棕榈、高光或描边碎片。
 

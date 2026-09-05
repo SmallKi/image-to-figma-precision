@@ -15,6 +15,9 @@ def inspect(path, expected_size=None):
         mode, size = im.mode, im.size
         has_alpha = 'A' in im.getbands() or 'transparency' in im.info
         alpha = np.asarray(im.convert('RGBA'))[:, :, 3]
+    foreground = alpha > 2
+    near_opaque = alpha >= 250
+    foreground_count = int(foreground.sum())
     failures = []
     if not has_alpha:
         failures.append('no_transparency_channel')
@@ -32,6 +35,10 @@ def inspect(path, expected_size=None):
         'transparentPixels': int(np.count_nonzero(alpha == 0)),
         'opaquePixels': int(np.count_nonzero(alpha == 255)),
         'partialAlphaPixels': int(np.count_nonzero((alpha > 0) & (alpha < 255))),
+        'nearOpaqueAlphaThreshold': 250,
+        'nearOpaquePixels': int(near_opaque.sum()),
+        'nearOpaqueFractionOfForeground': float(near_opaque.sum() / foreground_count) if foreground_count else 0.0,
+        'foregroundAlphaPercentiles': np.percentile(alpha[foreground], [5, 50, 95]).tolist() if foreground_count else [],
         'nontransparentPerimeterFraction': float(np.mean(perimeter > 0)),
         'rawGate': 'fail' if failures else 'pass', 'failures': failures,
         'visualReviewRequired': True,

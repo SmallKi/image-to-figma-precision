@@ -2,6 +2,8 @@
 
 出现原图底板色、邻接装饰色、白边或黑边时，先读本页。透明 Alpha、平滑轮廓、干净 RGB 是三项独立条件；有半透明像素不代表无杂色。
 
+优先验证内置工具直接输出的真实 RGBA；若只有轻微半透明（例如实体 Alpha 253/255）且换底正常，保留原 Alpha，不进入去污染/二值化返工。仅在有具体杂色证据时执行下面的修复。
+
 ## 识别污染来源
 
 保存配准后的原始局部、候选、实际显示尺寸与背景采样位置。检查外轮廓和每个孔洞内沿，不能只看图标最外圈。
@@ -47,8 +49,9 @@ Remove attached color spill and detached background scraps while retaining <legi
 Do not shrink the silhouette, thicken the outline, blur the edge, remove pale highlights,
 add a new border, or make the solid subject translucent to hide the contamination.
 
-Output one true RGBA PNG: solid interior alpha 255; exterior and named holes alpha 0;
-a narrow smooth partial-alpha band follows the contour at the working resolution.
+Output one true RGBA PNG: visually solid interior; slight near-opacity (alpha 250–255) is acceptable.
+Exterior and named holes alpha 0; natural smooth partial-alpha edges follow the contour.
+Do not harden alpha to 255 or remove soft edges merely to satisfy a numeric target.
 No colored matte, checkerboard, mockup, glow, new cast shadow, labels or comparison sheet.
 The same edge must remain clean on white, black, magenta, cyan and the target UI background.
 ```
