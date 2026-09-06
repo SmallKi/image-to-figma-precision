@@ -1,82 +1,95 @@
-# 透明图标生成协议
+# 按参考风格重新生成透明图标
 
-## 优先直接透明输出
+这是所有美术图形的默认制作流程，包含图标、背板、帽子剪影、小菱形、按钮、标签和装饰。先按 [asset-assembly.md](asset-assembly.md) 拆共用零件、语义组和摆放角度，再用描述和参考图片生成独立素材。背景若应不透明则使用不透明输出，其余独立素材按下文透明流程。默认以目标尺寸下约 8–9 分视觉相似验收；透明通过不能代替画风、关系和拆分检查。
 
-需要生成或编辑透明图标时，先用当前内置生图工具直接请求真实透明 PNG，保存原始 Alpha；不要默认先画白底/色键底再抠图。调用 schema 只提供 prompt 时也可直接请求透明，是否成功以实际文件为准。直接输出已通过 Alpha、孔洞/高光与边缘换底检查，就沿用该素材，不额外反混色或强制二值化。
+## 1. 看图并写出可执行描述
 
-已实测直接生成可以得到真实 RGBA，外部与把手孔洞为零 Alpha，实体和浅色高光接近 253–254。允许这种轻微半透明：它与正常柔边都不需要为了满足全 255 而返工。这个结论验证的是直接生成能力，参考图编辑的造型保真与逐素材质量仍需单独验收。
+实际查看原图和单个图标的局部参考。局部要包含完整主体、细枝和分离部件；整图用于画风与使用场景，局部用于主体结构。可使用已有裁片；需要裁切时按当前环境允许的图像工具处理，裁片仅作参考。不要把最近邻放大的像素块、失败抠图或差异热图当作画风参考。
 
-## 能力与调用
+先整理整套图标共用的风格描述，例如：
 
-GPT Image 的透明背景是输出参数，不只是提示词。调用层若暴露图像输出选项，必须显式设置：
+- 造型与视角：圆润或硬朗，正面或轻俯视，夸张比例及主要剪影。
+- 色板：主体、暗部、描边、高光分别是什么颜色；不把 UI 底板色或混色边缘当主体色。
+- 描边：颜色、视觉粗细、端点与转角、是否有内描线。
+- 材质与光照：平涂、手绘或立体质感，光从哪来，高光形状与阴影软硬。
+- 细节密度：最终尺寸下应保留的大色块、材质层次和关键识别部件。
 
-```json
-{
-  "background": "transparent",
-  "output_format": "png"
-}
-```
+随后逐素材口述“画什么”：主体、各部件数量与相对关系、固有姿态、必须保留的浅色高光/细枝、真正透明的孔洞、排除的共用底板与文字。单独生成背板时反过来排除物体。整体倾斜的按钮/标签要求正对画布、长轴水平、摆放角度 0°，原角度由 Figma 父容器恢复。只写“高清、精致、同风格”不够。看不清的功能含义记为未知，保留可见外形线索，不擅自赋予新含义。
 
-也可使用支持 Alpha 的 WebP；不能使用 JPEG。是否支持透明输出以当前接口 schema 与实际文件为准。权威说明：[OpenAI Image generation — Customize Image Output](https://developers.openai.com/api/docs/guides/image-generation#customize-image-output)。
+## 2. 准备图片与母版规格
 
-调用前先检查当前工具 schema：
+每次提交的输入角色写进提示词：
 
-1. 工具暴露 `background` 时，传 `transparent`；暴露 `output_format` 时传 `png`。
-2. 工具只暴露 `prompt` 和参考图时，在提示中明确真实 RGBA，但把它视为无保证的请求。
-3. 不得声称“提示词写了透明，所以结果透明”。保存后立即读取 PNG mode、Alpha 唯一级数、透明/半透明/不透明像素数。
-4. 若结果为 RGB、Alpha 全 255、棋盘格被烘焙、实体核心明显透底，从原始参考重新生成一次；不要继续编辑失败图。
-5. 若需要切换到直接 API/CLI 以显式传参，遵守运行环境的授权和密钥流程，不能偷偷换模型或接口。
+- 原图或整体风格图：提供画风、色板、光照，不导入其他对象或布局。
+- 当前图标局部：提供主体结构、关键比例和方向；不复制低清像素、压缩块和底色污染。
+- 已通过的同组图标（如有）：只辅助统一渲染语言，不把它的主体画进当前图标。
 
-用户修改生图配置、工具接口或模型后，旧能力失败记录不再用于阻止新调用，先重新做一次实际透明探测。同一配置、同一任务、同一调用接口已连续两次输出 RGB/烘焙棋盘格时，记录该次能力探测失败并停止这条透明提示重试路线，不为后续每个图标重复两次。这不证明所有接口或模型均不支持透明，只说明当前调用未满足 Alpha 合同。转用任务已允许且可验证的独立抠图流程；若需要新的 API/模型授权，保存失败样本后明确说明，不能把棋盘格图当作透明素材交付。
+文字不能代替图片附件。使用当前工具实际支持的参考图参数；本地图片先查看，全部有路径时可用支持的路径列表，含会话图片时依工具规则选择覆盖必要输入的最小范围，不混用互斥参数。若无法把必要参考传给工具，保留描述并说明缺少输入，不把纯文生图声称为参考图重绘。
 
-## 先隔离参考与边缘颜色
+记录最终主体尺寸 W×H 与原 UI 中的固定布局框，另请求工具支持的高分辨率母版。按主体宽高比选最接近的可用画幅；横向按钮不要默认方形画布。普通小图标可把约 1024 px 画布、主体主要尺寸约为目标的 4 倍或以上作为起点。按钮/标签明确要求“单个大主体、紧凑构图、不留展示海报式空白”，安全边距按 asset-assembly.md 设定；不能只有大画布而主体很小。工具未暴露尺寸参数时只在提示中请求，并检查实际输出，不能声称已强制指定。
 
-按 [edge-cleanup.md](edge-cleanup.md) 准备单个对象的局部参考，明确哪些颜色来自主体、哪些来自旧底板/相邻元素。原图混色边带是待修区域，不能要求模型原样保留其 RGB；可靠实体内区仍保持原样。只修边缘时使用该文档的局部模板；用户允许整体重绘时才使用下面的生成模板。
+保存母版实际尺寸、renderBounds/bodyBounds、四边空隙和长短轴占比。不要把插值放大的原图当高清参考或高清母版。按 asset-assembly.md 去除已确认全透明外边或补偿完整母版偏移，Figma 以实际主体适配目标框；禁止把大空白母版直接 FIT 进按钮框，再按图片节点中心排字。保留母版，避免先缩成小图后反复放大。需要单独导出目标尺寸文件时，从母版一次缩小并验证 Alpha 采样。像素画按其明确像素风格处理。
 
-透明提示中禁止“如果不能透明就白底/绿底”之类替代条款。纯色底候选是独立流程，不能与真 RGBA 请求混写；尤其不能用白底去隔离带白色高光的物体，再全局按白色挖空。
+## 3. 实际生成
 
-## 为目标尺寸生成
+默认使用当前内置图像工具；环境提供 imagegen 技能时遵循其调用规则。以当前 schema 为准，不编造模型、尺寸、seed、保存路径或透明输出参数；当前内置工具暴露 `background` 时显式设为 `"transparent"`，保存实际参数。工具暴露透明背景与 PNG 输出选项且当前模型支持时显式设置；只支持提示词时请求真实透明 RGBA，结果仍以实际文件为准。不得擅自改用收费 API/CLI 或换模型。
 
-重生图不要求逐像素复制低分辨率原图。先记录目标显示尺寸，再按该尺寸约束生成：
-
-- 明确写出“最终缩小到 W×H px 使用”。
-- 颜色风格：主色、暗部、轮廓色、高光色分别描述。
-- 轮廓风格：粗细、圆角、对称性和剪影比例；小尺寸简化仅限用户允许重绘时，原图中的合法细枝不可因去边缘污染而删除。
-- 结构：列出必须存在的主体、手把、徽记、叶片等；孔洞逐项列出。
-- 小尺寸可读性：先检查目标尺寸可读性；只有用户允许设计简化时才减少高频纹理或调整孔洞，精确还原保持原结构。
-- 主体接近不透明：允许轻微半透明，例如 Alpha 250–255；无需每个实体像素严格为 255。外轮廓和孔洞内沿允许自然的部分 Alpha 抗锯齿；约 1–2 px 指最终显示尺寸，工作分辨率按比例换算。真实柔光/半透明材质按对象单独声明。
-- 透明区域：画布外部和真实孔洞 Alpha=0；禁止棋盘格、底板、光晕、投影和文字。
-
-推荐模板：
+带参考图直出透明素材时，提示词开头先明确输出的**表示方式**，再描述 Alpha 细节：
 
 ```text
-Use case: isolated-asset-redraw (only when redraw is authorized)
-Asset type: game UI icon, final display size <W×H px>
-Input images: Image 1 supplies subject and palette; Image 2 supplies outline/rendering style (if present)
-Primary request: redraw one isolated <subject>; preserve silhouette, proportions, orientation, palette and original outline thickness; simplify details only if authorized
-Composition: centered, transparent safety margin, front/side orientation as reference
-Color palette: <main>, <shadow>, <outline>, <highlight>
-Must keep: <semantic parts and light highlights>
-Must be transparent: canvas outside; <named holes/gaps>
-Reference contamination: <sampled old matte/neighbor colors> belong to the background, not the subject palette.
-Edge RGB: reconstruct the narrow mixed-color boundary from adjacent foreground material/outline colors, including hole rims; do not copy old matte spill, bake a white/black fringe, shrink the silhouette or thicken the outline.
-Alpha contract: subject interior visually solid; slight near-opacity such as Alpha 250–255 is acceptable. Preserve natural partial-alpha antialiasing on outer and hole contours (about 1–2 px at final display size, scaled at working resolution); outside and named holes Alpha=0. Do not harden alpha or remove soft edges to force all subject pixels to 255.
-Avoid: checkerboard, opaque background, halo, cast shadow, text, extra decoration, microtexture that disappears at target size
-Output: true RGBA PNG with transparent background
+Generate the asset itself, not a picture or preview of an asset.
+<Describe only the wanted subject and explicitly exclude neighboring reference content.>
+The transparent-output setting is already enabled. Leave the exterior absent/transparent.
+Do not paint, simulate, or illustrate transparency; do not create a checkerboard, white/colored field, canvas, card, mockup, or surrounding shadow.
+Tight asset framing: the subject occupies <measured target coverage> while fully visible with a narrow safety edge. One object only.
 ```
 
-## 自动验收与重试
+该结构在一次同工具小样中跨按钮与帽子 6/6 得到真实 RGBA；同次测试中，仅写“透明背景”或大段 `ALPHA CONTRACT` 都只有 1/2。它是当前观察到的优先模板，不是模型保证：仍须逐文件检查真实 Alpha，不能因提示词相同跳过门禁。避免把 Alpha 技术说明堆在主体身份之前；“RGBA、角点 Alpha=0”可作为后续合同补充，但不能替代“生成资产本身、不要画透明预览”的表示约束。若模型/工具配置变化，重新抽样，不把本次比例当永久能力声明。
 
-生成后先运行 `audit-alpha.py`，同时看 `opaquePixels`（严格 255）和 `nearOpaqueFractionOfForeground`（近不透明比例），不能只看半透明像素总数判失败；再为素材建立 `audit-cutout.py` 合同。至少包含：
+一次生成一个图标，不生成含多个小图标的图集或整页界面再裁切。先以一个代表图标校准共用风格，检查通过即继续同组；用户已授权图标重绘时不为常规美术校准追加确认。每个后续图标都沿用同一风格描述，附自己的主体参考与专属部件要求。达到约 8–9 分、画风一致且目标尺寸正常就继续，不为细纹理或轻微轮廓偏差反复校准。
 
-- `alphaCoverage.min/max`：主体面积范围。
-- `alphaCoverage.minOpaqueFractionOfForeground`：脚本按 Alpha≥0.98（8 位约为 250–255）统计近不透明前景，不是只统计等于 255。普通实体图标可从 0.8 起按尺寸/细枝占比校准，拒绝核心明显透底；不能把大量 253 像素误报为整体半透明。
-- `keep`：高光、浅色纸面、皮肤等应保持接近不透明；普通实体可用 `minAlpha:0.98`。
-- `holes/outside`：真实孔洞与画布外部必须透明。
-- `expectedEnclosedHoles`：孔洞数量。
-- `componentPolicy`：主体与合法分离零件数量。
-- `edgePolicy`：Alpha 层级、突跳、孤立点、尖刺、针孔和已知底色。
+填写下面的模板，保存实际提交内容到任务目录的 `icons/<key>/generation-prompt.txt`；删去不适用条目，不能提交未填占位词。
 
-第一轮失败时只改一个原因：RGB/棋盘格失败就加强输出与 Alpha 合同；实体核心明显透底就修正实体覆盖率；仅轻微半透明且视觉正常时直接保留；小尺寸糊成一团先检查生成分辨率和预乘缩放；仅在允许设计简化时调整纹理与孔洞；风格漂移就补颜色/轮廓参考。边缘杂色失败时转到 edge-cleanup.md，区分 Alpha 错误与 RGB 混色，不能只追加“更透明”。透明和边缘颜色均通过后才以预乘 Alpha 缩放到目标尺寸并执行 Figma 4×、白黑洋红青色、默认/移动/隐藏回归。
+```text
+Use case: stylized-concept
+Asset type: one independently generated <foreground icon / empty shared backplate / decoration / button skin>
+Primary request: draw a new, crisp <subject> using both the written art direction and the attached references.
+Representation: generate the asset itself, not a picture or preview of an asset. The transparent-output setting is already enabled; leave the exterior absent/transparent and never paint a checkerboard, field, canvas, card, mockup, or surrounding shadow.
+Reconstruct the illustration at high resolution; do not extract, trace screenshot pixels, upscale, or sharpen the low-resolution crop.
+Input images:
+- Image 1: overall style reference only: <specific palette, outline, material and light observations>.
+- Image 2: subject reference: <parts, silhouette proportions, orientation, distinctive features>.
+- Image 3, if present: approved companion icon for rendering consistency only; do not copy its subject.
+Final use: <W×H px> in the existing UI. Keep semantic identity, major proportions, intrinsic pose and visual weight; aim for a close 8–9/10 visual match while matching the art style exactly.
+Orientation: <canonical pose>. For a tilted UI plate, generate a front-facing master with horizontal long axis and zero overall placement rotation; preserve designed chamfers/curved edges. Figma will rotate the complete component, including its editable text, by <placement angle> later. Do not bake that placement tilt into the asset.
+Working composition: <requested supported dimensions closest to subject aspect ratio>; one large fully visible subject, tight framing, approximately <measured/planned long-axis coverage> of the canvas long axis, only <small safe margins> around the artwork. Preserve the subject aspect ratio. No oversized empty presentation canvas; do not stretch the artwork to fill an incompatible canvas.
+For an empty button/label plate: preserve a clear continuous inner text-bearing region <relative position and proportions from reference>, with balanced visual padding; no text or placeholder lettering. Keep heavy bevels, curled corners and decoration out of that intended region.
+Art direction: <shape language>; <main/shadow/outline/highlight colors>; <outline weight and corners>; <material>; <light direction and shading style>.
+Must depict: <specific parts and their relationships, highlights, thin or detached details>.
+Must be transparent: exterior; <named true holes, or none inside a solid object>.
+Readability: clean intentional contours and clear major color shapes at final size; redraw indistinct non-semantic texture as restrained material detail, without deleting identifying parts.
+Alpha: solid-looking interior and highlights; near-opacity such as 250–255 is acceptable; natural antialiasing at outer and hole contours; exterior and true holes Alpha=0.
+Keep intrinsic illustrated outlines and material shading. This asset includes only <owned parts>. Exclude <shared backplate/frame or foreground objects, according to the asset role>, labels and numbers. Do not reinterpret a repeated UI frame as an intrinsic pedestal.
+Avoid: screenshot blur, compression blocks, copied matte colors, fuzzy contours, sharpening halos, opaque backdrop, extra objects, text, watermark, icon sheet, full UI.
+Output: one genuinely transparent RGBA PNG.
+```
 
-常规后处理限于裁切、配准和预乘 Alpha 缩放（缩放会改变采样，并非无损）。不得用轮廓拟合、腐蚀、膨胀或颜色键修补来掩盖生成缺陷；这类操作必须作为独立候选方法记录，不能算“生成阶段已解决”。
+## 4. 审核与针对性重绘
+
+按 [transparent-icons.md](transparent-icons.md) 检查候选母版、最终尺寸与 Figma 实际导出：
+
+1. 先看目标尺寸下主体和关键部件是否可读，描边是否清晰，整套画风是否一致，并确认图标与标签无溢出或遮挡。约 8–9 分像即可，轻微轮廓、纹理和色值差异不阻塞；缩小后糊成一团或明显换画风仍失败。
+2. 再检查 Alpha、浅色高光、真实孔洞和换底残边。轻微接近不透明与正常抗锯齿不需要硬化；RGB 文件、假棋盘格、实体明显透底都失败。
+3. 最后按实际主体放回固定布局框，检查大小、视觉中心、标签关系、真实底板与移动/隐藏状态。按钮额外检查四边空隙是否进入了布局、文字是否位于实际可用区且字高协调。另查母版长轴是否摆正、前景是否夹带共用背板、装饰是否属于约定语义组。按 asset-assembly.md 的代表项测试后才扩展全组。保持原文案和独立层，不以更换图标为由调整整个界面。
+
+问题与修改一一对应：风格漂移就修正具体色板/描边/材质描述；图标糊就检查母版主体尺寸和缩放链，并在原参考上重新生成清晰线条与色块；缺部件/错孔洞就明确部件关系；假透明就重申真实 Alpha 输出。失败图片只作诊断，不当下一次的主参考。不通过旧截图内区覆盖、腐蚀、颜色键、反复模糊/锐化来掩盖问题。
+
+默认每个图标 1 次生成 + 最多 2 次针对性重绘，通过即停止；用户的次数或费用限制优先。同一工具配置连续两次输出 RGB/烘焙棋盘格时暂停该配置的整组透明生成，不逐图重试同一失败。记录已完成与待处理项，保留最优候选；不自动转抠图、换 API 或无限重试。用户明确另选源像素保留流程时才使用 [edge-cleanup.md](edge-cleanup.md)。
+
+若会话中用户已授权“先生成独立高清候选，再用 AI 编辑去底”，沿用该授权执行这条独立路线，无需重新索要同一许可：以已查看的新生成候选为编辑输入，显式请求真实透明，保留主体与细节，输出重新走 Alpha 和目标尺寸审核。这不是截取原图像素或颜色键抠图，不能与失败的直接透明生成混算为成功；记录各阶段实际调用。未授权时不把该路线作为无限重试借口。
+
+## 5. 保存生成来源
+
+在 manifest 元素记录 `assetMethod: ai-reference-redraw`（源像素模式为 `source-preserve`），并保存原参考路径/哈希、图片角色、共用风格描述、逐图标实际提示词、目标布局框、母版尺寸/主体范围、缩放与对位变换、实际工具信息与透明参数、尝试次数、输出哈希及审核证据。未知模型型号不填写猜测值。
+
+这是来源元数据，不改变现有构建脚本的接口。最终素材仍通过 `transparentAsset`、真实 Alpha 报告与 visualReview 进入构建，见 [plan-format.md](plan-format.md)。重绘应标明 AI 生成，不能称为找回原始素材。像素差异完整保留，验收范围见 [acceptance.md](acceptance.md)。
