@@ -34,19 +34,38 @@
 
 默认使用当前内置图像工具；环境提供 imagegen 技能时遵循其调用规则。以当前 schema 为准，不编造模型、尺寸、seed、保存路径或透明输出参数；当前内置工具暴露 `background` 时显式设为 `"transparent"`，保存实际参数。工具暴露透明背景与 PNG 输出选项且当前模型支持时显式设置；只支持提示词时请求真实透明 RGBA，结果仍以实际文件为准。不得擅自改用收费 API/CLI 或换模型。
 
+透明素材的每次生成、针对性重试及透明编辑调用，都原样加入下列英文句子：
+
+> Realistic transparent background PNG (Alpha channel), subject intact, clean edges
+
+这里的 Realistic 修饰真实透明输出与完整干净的边缘，不要求写实画风。对于卡通、手绘、像素等参考，紧接着重申保持原参考风格；工具支持时仍显式设置 background: "transparent"，并逐文件验证真实 Alpha。该句是提示约束，尚不能据此宣称成功率提升。
+
 带参考图直出透明素材时，提示词开头先明确输出的**表示方式**，再描述 Alpha 细节：
 
 ```text
 Generate the asset itself, not a picture or preview of an asset.
 <Describe only the wanted subject and explicitly exclude neighboring reference content.>
+Realistic transparent background PNG (Alpha channel), subject intact, clean edges
+Match the reference art style exactly; “Realistic” describes genuine transparent output and clean, intact edges.
 The transparent-output setting is already enabled. Leave the exterior absent/transparent.
 Do not paint, simulate, or illustrate transparency; do not create a checkerboard, white/colored field, canvas, card, mockup, or surrounding shadow.
 Tight asset framing: the subject occupies <measured target coverage> while fully visible with a narrow safety edge. One object only.
 ```
 
-该结构在一次同工具小样中跨按钮与帽子 6/6 得到真实 RGBA；同次测试中，仅写“透明背景”或大段 `ALPHA CONTRACT` 都只有 1/2。它是当前观察到的优先模板，不是模型保证：仍须逐文件检查真实 Alpha，不能因提示词相同跳过门禁。避免把 Alpha 技术说明堆在主体身份之前；“RGBA、角点 Alpha=0”可作为后续合同补充，但不能替代“生成资产本身、不要画透明预览”的表示约束。若模型/工具配置变化，重新抽样，不把本次比例当永久能力声明。
+该模板不是输出保证，仍须逐文件检查真实 Alpha。先说明主体与资产本身的表示方式，再补充透明合同，避免模型把透明画成背景图案；更换提示词或工具配置后按实际结果判断。
 
-一次生成一个图标，不生成含多个小图标的图集或整页界面再裁切。先以一个代表图标校准共用风格，检查通过即继续同组；用户已授权图标重绘时不为常规美术校准追加确认。每个后续图标都沿用同一风格描述，附自己的主体参考与专属部件要求。达到约 8–9 分、画风一致且目标尺寸正常就继续，不为细纹理或轻微轮廓偏差反复校准。
+每次生图工具调用只生成一份独立素材，不生成多个小图标的图集或整页界面再裁切；这不要求所有素材串行。先以代表素材校准同组风格，不同风格组的代表素材可独立并行；通过后将该组可执行素材交给多个子 agent。每份素材仍附自己的原图参考、专属部件描述及已通过的同组风格参考。达到约 8–9 分、画风一致且目标尺寸正常就继续，不为细纹理或轻微轮廓偏差反复校准。
+
+
+### 规划后并行生图与处理
+
+**有可并行素材时，优先尽可能多开子 agent，让生成与逐项处理同时推进。** 先规划再分工；以就绪独立任务数、可用 agent 槽位和工具实际并发/额度限制共同决定上限，尽量填满可用并发槽位，不任意固定为一两个，也不为凑数量重复生成同一素材。
+
+- 主代理先登记 assetKey、参考图路径与角色、风格描述、目标尺寸/主体比例、共享背板、依赖关系、输出目录和验收要求。共享零件只指定一个生成负责人；前景不夹带共享背板。仅向子 agent 分派依赖已满足、边界明确的素材。
+- 子 agent 负责所分素材的完整本地流程：实际查看参考、写专属提示词并加入规定透明句、调用生图、检查真实 Alpha、目标尺寸换底与画风/清晰度、必要的针对性重试、生成允许的紧边或缩小派生图。保留高清母版；重试与去底路线沿用本 Skill 的授权和预算规则，不因并发跳过门禁。
+- 各子 agent 使用互不重叠的素材目录和逐项记录；返回 assetKey、实际提示词/参数、母版及派生图路径/哈希、主体框/偏移、Alpha 报告、视觉证据与未解决项。不得覆盖其他素材或共同修改全局 manifest/state。由主代理合并来源和状态，去重后接收结果。
+- 使用滚动队列：一个子 agent 完成就分派下一项，生成中的素材与其他素材的审核、处理、Figma 组装并行推进；不要等整批最慢的一项才继续。主代理统一复核并串行写入同一 Figma 文件，避免多个 agent 同时创建共享组件、修改根节点或清理 QA。
+- 发生限流、额度耗尽或同配置重复失败时，及时汇总给主代理，按实际工具限制降低并发或暂停对应队列；不能通过增加子 agent 绕过限制。环境没有可用子 agent 或子 agent 无法调用生图工具时，说明限制，并在工具支持范围内并行独立调用与本地处理，不虚称使用了子 agent。
 
 填写下面的模板，保存实际提交内容到任务目录的 `icons/<key>/generation-prompt.txt`；删去不适用条目，不能提交未填占位词。
 
@@ -55,6 +74,8 @@ Use case: stylized-concept
 Asset type: one independently generated <foreground icon / empty shared backplate / decoration / button skin>
 Primary request: draw a new, crisp <subject> using both the written art direction and the attached references.
 Representation: generate the asset itself, not a picture or preview of an asset. The transparent-output setting is already enabled; leave the exterior absent/transparent and never paint a checkerboard, field, canvas, card, mockup, or surrounding shadow.
+Realistic transparent background PNG (Alpha channel), subject intact, clean edges
+Match the reference art style exactly; “Realistic” describes genuine transparent output and clean, intact edges.
 Reconstruct the illustration at high resolution; do not extract, trace screenshot pixels, upscale, or sharpen the low-resolution crop.
 Input images:
 - Image 1: overall style reference only: <specific palette, outline, material and light observations>.

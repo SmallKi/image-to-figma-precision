@@ -74,7 +74,7 @@ python -m venv .venv
 
 1. 记录源图尺寸与哈希，确认目标文件、字体和可调用的写入工具。
 2. 建立分层清单与构建计划，保存 `manifest.json`、`state.json`、`iterations.json`。
-3. 分析图标画风并写逐项描述，连同参考图先生成一个代表图标校准，再逐个生成；通过清晰度/风格/透明验收后分批写入，保存节点 ID。
+3. 先规划素材与共享零件，校准代表素材，再尽可能多开子 agent 并行生图、Alpha/画风检查及本地处理；每次调用只生成一份独立素材，主代理汇总并串行写入 Figma。透明提示词包含：Realistic transparent background PNG (Alpha channel), subject intact, clean edges。
 4. 导出同尺寸整屏图和透明组件图，分别检查像素、结构与可编辑性。
 5. 依据证据迭代，交付 Figma 链接、截图、报告及未解决问题。
 
